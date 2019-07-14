@@ -1,0 +1,10 @@
+[package]
+name = "threaded-hasher"
+version = "0.1.0"
+authors = ["Stephen Battista <stephen.battista@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+ring = "0.14.6"
+data-encoding = "2.1.2"
+scoped_threadpool = "0.1.9"
