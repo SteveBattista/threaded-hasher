@@ -1,26 +1,68 @@
+use clap::{App, Arg};
 use data_encoding::HEXUPPER;
-use ring::digest::{Context, Digest, SHA512};
+use ring::digest::{Algorithm, Context, Digest, SHA256, SHA512};
 use scoped_threadpool::Pool;
-use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read};
+use std::process::exit;
 
 fn main() {
-    let mut args: Vec<String> = env::args().collect();
-    args.remove(0);
-    let mut pool = Pool::new(20);
+    let matches = App::new("Threaded Hasher")
+                          .version("1.0")
+                          .author("Stephen Battista <stephen.battista@gmail.com>")
+                          .about("Implements hashing with a configurable thread pool")
+                          .arg(Arg::with_name("algo")
+                               .short("a")
+                               .long("algo")
+                               .value_name("algo")
+                               .help("Chooses what algorthim to use SHA256->(256) or SHA512->(512), If not used SHA256 is the default")
+                               .takes_value(true))
+                          .arg(Arg::with_name("pool")
+			        .short("p")
+                               .long("pool")
+                               .value_name("pool")
+                               .help("Sets the maximum number of threads when hashing. Default is 10. Large numbers may cause the progam not to hash all files.")
+                               .takes_value(true))
+                          .arg(Arg::with_name("files")
+                               .value_name("files")
+                               .help("Place one or more files to hash")
+                               .required(true).min_values(1))
+                          .get_matches();
+
+    let hashalgo: &Algorithm;
+    let inputhash = matches.value_of("algo").unwrap_or("256");
+    match inputhash.as_ref() {
+        "256" => hashalgo = &SHA256,
+        "512" => hashalgo = &SHA512,
+        _ => {
+            println!(" Please choose 256 or 512 for type of SHA hash");
+            exit(0);
+        }
+    }
+    //  println!("Hash chosen is {}", inputhash);
+
+    let inputpool = matches.value_of("pool").unwrap_or("10");
+    let mut pool = Pool::new(inputpool.parse().unwrap());
+    //    println!("pool chosen is {}", inputpool);
+
+    let inputfiles: Vec<_> = matches.values_of("files").unwrap().collect();
+    //   println!("Files chosen is {}", inputpool.len());
+
     pool.scoped(|scoped| {
-        for file in args {
+        for file in inputfiles {
             scoped.execute(move || {
-                let _x = gethashofile(&file);
+                let _x = gethashofile(&file, hashalgo);
             });
         }
     });
 }
 
-fn sha512_digest<R: Read>(mut reader: R) -> Result<Digest, Box<dyn Error>> {
-    let mut context = Context::new(&SHA512);
+fn var_digest<R: Read>(
+    mut reader: R,
+    hashalgo: &'static Algorithm,
+) -> Result<Digest, Box<dyn Error>> {
+    let mut context = Context::new(hashalgo);
     let mut buffer = [0; 1024];
 
     loop {
@@ -33,14 +75,10 @@ fn sha512_digest<R: Read>(mut reader: R) -> Result<Digest, Box<dyn Error>> {
     Ok(context.finish())
 }
 
-fn gethashofile(path: &str) -> Result<(), Box<dyn Error>> {
+fn gethashofile(path: &str, hashalgo: &'static Algorithm) -> Result<(), Box<dyn Error>> {
     let input = File::open(path)?;
     let reader = BufReader::new(input);
-    let digest = sha512_digest(reader)?;
-    println!(
-        "{} SHA-512 digest is {}",
-        path,
-        HEXUPPER.encode(digest.as_ref())
-    );
+    let digest = var_digest(reader, hashalgo)?;
+    println!("{} : {}", path, HEXUPPER.encode(digest.as_ref()));
     Ok(())
 }
