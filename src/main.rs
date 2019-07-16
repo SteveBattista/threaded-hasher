@@ -36,14 +36,23 @@ fn main() {
         "256" => hashalgo = &SHA256,
         "512" => hashalgo = &SHA512,
         _ => {
-            println!(" Please choose 256 or 512 for type of SHA hash");
+            println!("Please choose 256 or 512 for type of SHA hash.");
             exit(0);
         }
     }
     //  println!("Hash chosen is {}", inputhash);
 
     let inputpool = matches.value_of("pool").unwrap_or("10");
-    let mut pool = Pool::new(inputpool.parse().unwrap());
+    let poolresult = inputpool.parse();
+    let poolnumber;
+    match poolresult {
+        Ok(n) => poolnumber = n,
+        Err(_e) => {
+            println!("Please choose a number for the number of threads.");
+            exit(0);
+        }
+    }
+    let mut pool = Pool::new(poolnumber);
     //    println!("pool chosen is {}", inputpool);
 
     let inputfiles: Vec<_> = matches.values_of("files").unwrap().collect();
