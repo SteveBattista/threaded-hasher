@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)] 
 use clap::{App, Arg};
 use data_encoding::HEXUPPER;
 use ring::digest::{Context, SHA256, SHA384, SHA512,Algorithm,Digest};
@@ -16,7 +17,7 @@ fn main() {
                                .short("a")
                                .long("algorithm")
                                .value_name("256 | 384 | 512")
-                               .help("Chooses what algorthim to use SHA256->(256), SHA384->(384) or SHA512->(512), Default is SHA256.")
+                               .help("Chooses what algorthim to use SHA256->(256), SHA384->(384) or SHA512->(512). Default is SHA256.")
                                .takes_value(true))
                           .arg(Arg::with_name("pool")
 			        .short("p")
