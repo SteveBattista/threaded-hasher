@@ -1,6 +1,6 @@
 use clap::{App, Arg};
 use data_encoding::HEXUPPER;
-use ring::digest::{Algorithm, Context, Digest, SHA256, SHA512};
+use ring::digest::{Context, SHA256, SHA384, SHA512};
 use scoped_threadpool::Pool;
 use std::error::Error;
 use std::fs::File;
@@ -15,8 +15,8 @@ fn main() {
                           .arg(Arg::with_name("algo")
                                .short("a")
                                .long("algorithm")
-                               .value_name("256 | 512")
-                               .help("Chooses what algorthim to use SHA256->(256) or SHA512->(512), Default is SHA256.")
+                               .value_name("256 | 384 | 512")
+                               .help("Chooses what algorthim to use SHA256->(256), SHA384->(384) or SHA512->(512), Default is SHA256.")
                                .takes_value(true))
                           .arg(Arg::with_name("pool")
 			        .short("p")
@@ -34,9 +34,10 @@ fn main() {
     let inputhash = matches.value_of("algo").unwrap_or("256");
     match inputhash.as_ref() {
         "256" => hashalgo = &SHA256,
+        "384" => hashalgo = &SHA384,
         "512" => hashalgo = &SHA512,
         _ => {
-            println!("Please choose 256 or 512 for type of SHA hash.");
+            println!("Please choose 256, 384 or 512 for type of SHA hash.");
             exit(0);
         }
     }
@@ -90,4 +91,87 @@ fn gethashofile(path: &str, hashalgo: &'static Algorithm) -> Result<(), Box<dyn 
     let digest = var_digest(reader, hashalgo)?;
     println!("{} : {}", path, HEXUPPER.encode(digest.as_ref()));
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+    use ring::test;
+
+    #[test]
+    fn test_encode_decode() {
+        let deadbeef = vec![0xde, 0xad, 0xbe, 0xef];
+        assert_eq!(HEXUPPER.decode(b"DEADBEEF").unwrap(), deadbeef);
+        assert_eq!(HEXUPPER.encode(&deadbeef), "DEADBEEF");
+    }
+
+    #[test]
+    fn test_from_hex() {
+        let acutal = "DEADBEEF";
+        let acutal_binary = HEXUPPER.decode(b"DEADBEEF").unwrap();
+        assert_eq!(test::from_hex(acutal).unwrap(),acutal_binary);
+    }
+
+
+    #[test]
+    fn test_256_1() {
+        let mut context = Context::new(&SHA256);
+        context.update(b"abc");
+        let actual = context.finish();
+        let expected_hex = "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD";
+        let expected: Vec<u8> = test::from_hex(expected_hex).unwrap();
+        assert_eq!(&expected, &actual.as_ref());
+    }
+
+    #[test]
+    fn test_256_2() {
+        let mut context = Context::new(&SHA256);
+        context.update(b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq");
+        let actual = context.finish();
+        let expected_hex = "248D6A61D20638B8E5C026930C3E6039A33CE45964FF2167F6ECEDD419DB06C1";
+        let expected: Vec<u8> = test::from_hex(expected_hex).unwrap();
+        assert_eq!(&expected, &actual.as_ref());
+    }
+
+    #[test]
+    fn test_384_1() {
+        let mut context = Context::new(&SHA384);
+        context.update(b"abc");
+        let actual = context.finish();
+        let expected_hex = "CB00753F45A35E8BB5A03D699AC65007272C32AB0EDED1631A8B605A43FF5BED8086072BA1E7CC2358BAECA134C825A7";
+        let expected: Vec<u8> = test::from_hex(expected_hex).unwrap();
+        assert_eq!(&expected, &actual.as_ref());
+    }
+
+    #[test]
+    fn test_384_2() {
+        let mut context = Context::new(&SHA384);
+        context.update(b"abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu");
+        let actual = context.finish();
+        let expected_hex = "09330C33F71147E83D192FC782CD1B4753111B173B3B05D22FA08086E3B0F712FCC7C71A557E2DB966C3E9FA91746039";
+        let expected: Vec<u8> = test::from_hex(expected_hex).unwrap();
+        assert_eq!(&expected, &actual.as_ref());
+    }
+
+    #[test]
+    fn test_512_1() {
+        let mut context = Context::new(&SHA512);
+        context.update(b"abc");
+        let actual = context.finish();
+        let expected_hex = "DDAF35A193617ABACC417349AE20413112E6FA4E89A97EA20A9EEEE64B55D39A2192992A274FC1A836BA3C23A3FEEBBD454D4423643CE80E2A9AC94FA54CA49F";
+        let expected: Vec<u8> = test::from_hex(expected_hex).unwrap();
+        assert_eq!(&expected, &actual.as_ref());
+    }
+
+    #[test]
+    fn test_512_2() {
+        let mut context = Context::new(&SHA512);
+        context.update(b"abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu");
+        let actual = context.finish();
+        let expected_hex = "8E959B75DAE313DA8CF4F72814FC143F8F7779C6EB9F7FA17299AEADB6889018501D289E4900F7E4331B99DEC4B5433AC7D329EEB6DD26545E96E55B874BE909";
+        let expected: Vec<u8> = test::from_hex(expected_hex).unwrap();
+        assert_eq!(&expected, &actual.as_ref());
+    }
+
 }
