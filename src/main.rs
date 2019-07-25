@@ -1,6 +1,6 @@
 use clap::{App, Arg};
 use data_encoding::HEXUPPER;
-use ring::digest::{Context, SHA256, SHA384, SHA512};
+use ring::digest::{Context, SHA256, SHA384, SHA512,Algorithm,Digest};
 use scoped_threadpool::Pool;
 use std::error::Error;
 use std::fs::File;
