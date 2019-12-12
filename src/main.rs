@@ -1,10 +1,10 @@
-#![forbid(unsafe_code)] 
+#![forbid(unsafe_code)]
 use clap::{App, Arg};
 use data_encoding::HEXUPPER;
 use ring::digest::{Context, SHA256, SHA384, SHA512,Algorithm,Digest};
 use scoped_threadpool::Pool;
 use std::error::Error;
-use std::fs::File;
+use std::fs;
 use std::io::{BufReader, Read};
 use std::process::exit;
 
@@ -33,7 +33,7 @@ fn main() {
 
     let hashalgo: &Algorithm;
     let inputhash = matches.value_of("algo").unwrap_or("256");
-    match inputhash.as_ref() {
+    match inputhash {
         "256" => hashalgo = &SHA256,
         "384" => hashalgo = &SHA384,
         "512" => hashalgo = &SHA512,
@@ -87,10 +87,11 @@ fn var_digest<R: Read>(
 }
 
 fn gethashofile(path: &str, hashalgo: &'static Algorithm) -> Result<(), Box<dyn Error>> {
-    let input = File::open(path)?;
+    let metadata = fs::metadata(path)?;
+    let input = fs::File::open(path)?;
     let reader = BufReader::new(input);
     let digest = var_digest(reader, hashalgo)?;
-    println!("{} : {}", path, HEXUPPER.encode(digest.as_ref()));
+    println!("{} : {} : {}", path, metadata.len(), HEXUPPER.encode(digest.as_ref()));
     Ok(())
 }
 
